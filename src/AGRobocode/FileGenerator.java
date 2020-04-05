@@ -5,6 +5,7 @@ import AGRobocode.Configuracion;
 
 import java.io.*;
 import java.util.Random;
+//import java.util.Scanner;
 /**
  * Se encarga de escribir los ficheros de configuracion de los individuos.
  */
@@ -16,17 +17,29 @@ public class FileGenerator {
 	 * Constructor
 	 */
 	public FileGenerator(Individuo I) {
-		Sujeto = I;
-		nDep = Sujeto.countDep();
-		nReglas = Configuracion.getNReg();
+		Sujeto = new Individuo(-1, -1);
+		Sujeto.setNew(I);
+		//nDep = Sujeto.countDep();
+		//nReglas = Configuracion.getNReg();
+	}
+	
+	/**
+	 * Constructor vacío
+	 */
+	public FileGenerator(){
+		Sujeto = new Individuo();
+		//nDep = -1;
+		//nReglas = 0;
 	}
 	
 	
 	/**
-	 * Establece un nuevo sujeto, una nueva generacion y una nueva posicion
+	 * Establece un nuevo sujeto y actualiza parámetros de clase
 	 */
 	public void next(Individuo I){
-		Sujeto = I;
+		Sujeto.setNew(I);
+		//nDep = Sujeto.countDep();
+		//nReglas = Configuracion.getNReg();
 	}
 	
 	
@@ -52,8 +65,9 @@ public class FileGenerator {
 	 * 
 	 */
 	public void writeLog(Individuo Poblacion []){
-		File F = new File(Configuracion.getFilePath()+"RuleLog"+Integer.toString(Poblacion[0].getGeneration())+".txt");
-		FileWriter Fw = null;						//rulelog<generacion>.txt es el nombre del fichero donde se guardaran los sucesivos registros
+		//REPORT<generacion>.txt es el nombre del fichero donde se guardaran los sucesivos registros
+		File F = new File(Configuracion.getReportPath()+"REPORT"+Integer.toString(Poblacion[0].getGeneration())+".txt");
+		FileWriter Fw = null;						
 		try {
 			Fw = new FileWriter(F);
 		} catch (IOException e) {
@@ -63,7 +77,8 @@ public class FileGenerator {
 		/* recorre el array de poblacion */
 		for(int i = 0 ; i < Configuracion.getTPob() ; i++){
 			try {
-				Fw.write(Poblacion[i].getConfigStr()+"\n\n");					//escribe en el fichero la configuracion de los robots
+				Fw.write(Poblacion[i].getName()+"\n"+Poblacion[i].getConfigStr()+"\n");					//escribe en el fichero la configuracion de los robots
+				Fw.write("Fitness = "+Poblacion[i].getFitness()+"\nElitismo = "+Poblacion[i].getElite()+"\n\n");
 			} catch (IOException e) {
 				// TODO Auto-generated catch block
 				e.printStackTrace();
@@ -81,14 +96,30 @@ public class FileGenerator {
 	 * Elimina los ficheros de comportamiento de una generacion determinada
 	 */
 	public void deleteOld(int gen){
-		File Temp = null;
-		Temp = getNewPath(gen, 0); // el primer fichero es el 0
-		if(Temp.exists() == true)
-			Temp.delete();
-		for(int i = 1 ; i <= Configuracion.getTPob() ; i++){
+		File Temp = new File(Configuracion.getFilePath());
+		for(int i = 0 ; i <= Configuracion.getTPob() ; i++){
 			Temp = getNewPath(gen, i);
 			if(Temp.exists() == true)
 				Temp.delete();
+		}
+	}
+	
+	/**
+	 * 
+	 * Elimina los ficheros class de ejecucion generados con cada compilacion
+	 */
+	public void deleteClasses(int gen){
+		File Aux = new File(Configuracion.getFilePath());			// aux existe para mantener una referencia al objeto de inicializacion
+		File Temp = Aux;
+		String FilePath ="";
+				
+		for(int i = 0 ; i < Configuracion.getTPob() ; i++){
+			FilePath = "";
+			FilePath = Configuracion.getFilePath()+"G"+Integer.toString(gen)+"N"+Integer.toString(i)+".class";
+			Temp = getNewPath(FilePath);
+			if(Temp.exists() == true)
+				Temp.delete();
+			Temp = Aux;
 		}
 	}
 	
@@ -97,7 +128,18 @@ public class FileGenerator {
 	 */
 	public File getNewPath(int generation, int position){
 		File F = null;
-		F = new File(Configuracion.getFilePath()+"G"+Integer.toString(generation)+"N"+Integer.toString(position));
+		F = new File(Configuracion.getFilePath()+"G"+Integer.toString(generation)+"N"+Integer.toString(position)+".java");
+		return F;
+	}
+	
+	/**
+	 * Proporciona un objeto File con filepath = FilePath
+	 * @param FilePath
+	 * @return
+	 */
+	public File getNewPath(String FilePath){
+		File F = null; 
+		F = new File(FilePath);
 		return F;
 	}
 	
@@ -106,7 +148,7 @@ public class FileGenerator {
 	 * 
 	 * El fichero se llamara ELITEGENx donde x es la generacion a la que pertenecen
 	 * 
-	 */
+	 *
 	public void genLogElite(Individuo [] Elite){
 		File F = new File (Configuracion.getRPath()+"ELITEGEN"+Integer.toString(Elite[0].getGeneration()));
 		FileWriter Fw = null;
@@ -117,7 +159,7 @@ public class FileGenerator {
 			// TODO Auto-generated catch block
 			e.printStackTrace();
 		}
-		/* recorre el vector Elite y los imprime */
+		/* recorre el vector Elite y los imprime *
 		for(int i = 0 ; i < Configuracion.getAcc() + Configuracion.getParam() ; i++){
 			// copia la configuracion
 			Aux = Elite[i].getConfigStr();
@@ -143,7 +185,7 @@ public class FileGenerator {
 	 * 
 	 * El fichero se llamara GENx donde x es la generacion 
 	 * 
-	 */
+	 *
 	public void genLogFile(Individuo [] Poblacion){
 		File F = new File(Configuracion.getRPath()+"GEN"+Poblacion[0].getGeneration());
 		FileWriter Fw = null;
@@ -155,9 +197,9 @@ public class FileGenerator {
 			// TODO Auto-generated catch block
 			e.printStackTrace();
 		}
-		/* recorre la poblacion y la escribe */
+		/* recorre la poblacion y la escribe *
 		for(int i = 0 ; i < Configuracion.getParam() + Configuracion.getAcc() ; i++){
-			/* obtiene la configuracion */
+			/* obtiene la configuracion *
 			Aux = Poblacion[i].getConfigStr();
 			try {
 				Fw.write(Aux);										//escritura
@@ -189,7 +231,7 @@ public class FileGenerator {
 		FileWriter Fw = null;
 		String aux = new String();						// en esta variable se almacena el contenido del fichero a escribir
 		aux = "#Battle Properties\nrobocode.battleField.width=800\n	robocode.battleField.height=600\n";
-		aux = aux + "robocode.battle.numRounds="+Integer.toString(Configuracion.getNBat())+"\nrobocode.battle.gunCoolingRate=0.1\nrobocode.battle.rules.inactivityTime=450\n";
+		aux = aux + "robocode.battle.numRounds="+Integer.toString(Configuracion.getNBat())+"\nrobocode.battle.gunCoolingRate=0.1\nrobocode.battle.rules.inactivityTime=100\n";
 		aux = aux + "robocode.battle.selectedRobots=myRobots.G" + Integer.toString(generation) + "N" + Integer.toString(individuo);
 		aux = aux + "*,myRobots.G" + Integer.toString(generation) + "N" + Integer.toString(enemigo)+"*\n";
 		
@@ -221,8 +263,8 @@ public class FileGenerator {
 	 * elimina los ficheros de batalla de una generacion
 	 */
 	public void removeBat(int generation){
-		File F = null;
-		for(int i = 0 ; i < Configuracion.getNBat() ; i++){
+		File F = new File(Configuracion.getBattlePath());
+		for(int i = 0 ; i < Configuracion.getTotalBat() ; i++){
 			F = getNewBatPath(generation, i);
 			if(F.exists() == true)
 				F.delete();
@@ -234,7 +276,10 @@ public class FileGenerator {
 	 */
 	public void removeRes(){
 		File F = null;
-		for(int i = 0; i < Configuracion.getNBat() ; i++){			// el numero de ficheros de resultados coincide con el de batalla
+		
+		System.out.printf("\n\nBatallas esperadas = "+Configuracion.getTotalBat());
+		
+		for(int i = 0; i < Configuracion.getTotalBat() ; i++){			// el numero de ficheros de resultados coincide con el de batalla
 			F = getNewResPath(i);
 			if(F.exists() == true)
 				F.delete();
@@ -253,7 +298,7 @@ public class FileGenerator {
 	 * devuelve un objeto File para ficheros de resultados
 	 */
 	public File getNewResPath(int nFile){
-		File F = new File(Configuracion.getFilePath()+"R"+Integer.toString(nFile)+".txt");
+		File F = new File(Configuracion.getRPath()+"R"+Integer.toString(nFile)+".txt");
 		return F;
 	}
 	/**
@@ -269,6 +314,11 @@ public class FileGenerator {
 	 * 
 	 * FileName es el nombre del fichero de resultado
 	 * RoboName nombre del robot a evaluar
+	 * ----------------------------------------------------------------------------------------------------------
+	 * 
+	 * REVISAR
+	 * 
+	 * -----------------------------------------------------------------------------------------------------------
 	 */
 	public int getBattleResults(String FileName, String RoboName){
 		File F = null;							// fichero que abriremos
@@ -277,21 +327,34 @@ public class FileGenerator {
 		String Buf = new String();				// buffer que almacenara los caracteres leidos
 		String [] Robot1 = null;				// informacion relativa al primer robot
 		String [] Robot2 = null;				// informacion relativa al segundo robot
+		String Temp = null;
+		
 		
 		/* inicializacion */
 		Robot1 = new String[11];				// es el numero de strings arrojados por el metodo split de la clase lectora
 		Robot2 = new String[11];
-		for(int i = 0 ; i < 11 ; i++){
+/*		for(int i = 0 ; i < 11 ; i++){
 			Robot1[i] = new String();
 			Robot2[i] = new String();
 		}
-		F = new File(Configuracion.getRPath()+FileName);
+	*/	
+		Temp = new String(Configuracion.getRPath() + FileName);
+		
+		F = new File(Temp);
+		
+		
+		
+		//espera activa a que el proceso robocode termine
+		
 		try {
 			Fr = new FileReader(F);
 		} catch (FileNotFoundException e) {
 			// TODO Auto-generated catch block
 			e.printStackTrace();
 		}
+		
+	
+		
 		Br = new BufferedReader(Fr);
 		
 		/* procesamiento de lectura */
@@ -325,14 +388,14 @@ public class FileGenerator {
 	 * Recibe dos arrays de String
 	 * Cada array de String consta de 11 cadenas:
 	 * 		- nombre del robot (posicion: carpeta.nombre) ........................... usar para ordenar (solo el nombre)
-	 * 		- puntuacion total (int (int%) ) ........................................ no interesa : no sabemos que pautas de puntuacion sigue
+	 * 		- puntuacion total (int (int%) ) ........................................ valor a discriminar (posicion 2)
 	 * 		- sobrevive ............................................................. no interesa
 	 * 		- bonus de supervivencia ................................................ no interesa
 	 * 		- daño por disparo ...................................................... no interesa
 	 * 		- bonus de disparo ...................................................... no interesa
 	 * 		- daño por colision *2 .................................................. no interesa
 	 * 		- bonus por colision .................................................... no interesa
-	 * 		- veces que ha quedado primero (int) .................................... discriminar (posicion 9)
+	 * 		- veces que ha quedado primero (int) .................................... no discriminar : a veces hay fallo con este valor
 	 * 		- veces que ha quedado segundo (int) .................................... no interesa
 	 * 		- veces que ha quedado tercero (int) .................................... no interesa
 	 * 
@@ -342,25 +405,25 @@ public class FileGenerator {
 	 * 
 	 */
 	public int  discriminate(String [] Resultado1, String [] Resultado2, String RoboName){
-		int [] discriminados = new int [2];								// solo almacenaremos las veces que ha quedado primero
+		String Buf = null;
+		String [] Splitted = new String[2];								// splitted es el array de string que nos servira para separar la cadena
+		int discriminados;												// almacenaremos la puntuacion
 		if(Resultado1[0].indexOf(RoboName) != -1){						// Resultado1 contiene los resultados del robot a evaluar
-			discriminados[0] = Integer.parseInt(Resultado1[9]);	
-			discriminados[1] = Integer.parseInt(Resultado2[9]);
+			Buf = new String (Resultado1[1]);
+			Splitted = Buf.split(" ");
+			discriminados = Integer.parseInt(Splitted[0]);
 		}
 		else{															// Resultado2 contiene los resultados del robot a evaluar
-			discriminados[0] = Integer.parseInt(Resultado2[9]);
-			discriminados[1] = Integer.parseInt(Resultado1[9]);
+			Buf = new String (Resultado2[1]);
+			Splitted = Buf.split(" ");
+			discriminados = Integer.parseInt(Splitted[0]);
 		}
 		
-		return discriminados[0];
+		return discriminados;
 	}
 	
 	/**
 	 * compila los ficheros de comportamiento de una generación
-	 * 
-	 *-----------------------------------------------------------------------------------------------------------------
-	 *																	REVISAR
-	 *----------------------------------------------------------------------------------------------------------------- 
 	 * 
 	 */
 	public void compileThis(int generation){
@@ -390,22 +453,205 @@ public class FileGenerator {
 	 * 
 	 */
 	public String [] getCompilationCmd(int generacion, int posicion){
-		String [] Temp = new String [5]; //aqui se almacenara el comando a devolver
-		for(int i = 0 ; i < 5 ; i++)
+		String [] Temp = new String [4]; //aqui se almacenara el comando a devolver
+		for(int i = 0 ; i < 4 ; i++)
 			Temp [i] = new String ("");
 		String Filename = "G"+Integer.toString(generacion)+"N"+Integer.toString(posicion)+".java";
 		for(int i = 0 ; i < 4 ; i++){
 			Temp[i] = Configuracion.getUncompletedCompilationCmd()[i];
 		}
-		Temp[4] = Temp[4]+Filename;
+		Temp[3] = Temp[3]+Filename;
 		return Temp;
 	}
 	
+	/**
+	 * Almacena en un fichero la configuración de la población 
+	 * @param Poblacion 
+	 * @return Objeto File con la dirección de 
+	 */
+	public void saveThis(Individuo [] Poblacion){
+		
+		File F = new File (Configuracion.getSavePath());
+		
+		// escribe las codificaciones en un fichero
+
+		FileWriter Fw = null;						
+		try {
+			Fw = new FileWriter(F);
+		} catch (IOException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
+		/* recorre el array de poblacion */
+		/********
+		 * ESCRITURA DE FICHEROS
+		 * -generacion
+		 * -posicion
+		 * -7 veces : \ngen gen gen gen gen ... hasta 10 veces
+		 */
+		for(int i = 0 ; i < Configuracion.getTPob() ; i++){
+			try {
+				Fw.write("\n"+Poblacion[i].getGeneration()+"\n"+Poblacion[i].getPosition());
+				
+			} catch (IOException e) {
+				// TODO Auto-generated catch block
+				e.printStackTrace();
+			}
+			
+			for(int j = 0 ; j < Configuracion.getNReg() ;j ++){
+				try {
+					Fw.write("\n");
+				} catch (IOException e) {
+					// TODO Auto-generated catch block
+					e.printStackTrace();
+				}
+				
+				// escribe los genes
+			
+				for(int k = 0 ; k < Configuracion.getAcc()+Configuracion.getParam() ; k++){
+					if(k == Configuracion.getAcc()+Configuracion.getParam()-1){
+						if(Poblacion[i].getGenome(j, k) == true){
+							try {
+								Fw.write("true");
+							} catch (IOException e) {
+								// TODO Auto-generated catch block
+								e.printStackTrace();
+							}
+						}
+						
+						else{
+							try {
+								Fw.write("false");
+							} catch (IOException e) {
+								// TODO Auto-generated catch block
+								e.printStackTrace();
+							}
+						}
+					}
+				
+					else{
+						if(Poblacion[i].getGenome(j, k) == true){
+							try {
+								Fw.write("true ");
+							} catch (IOException e) {
+								// TODO Auto-generated catch block
+								e.printStackTrace();
+							}
+						}
+						else{
+							try {
+								Fw.write("false ");
+							} catch (IOException e) {
+								// TODO Auto-generated catch block
+								e.printStackTrace();
+							}
+						}
+					}
+				}
+			}
+		}		
+		try {
+			Fw.close();
+		} catch (IOException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
+	}
+	
+	
+	public void loadData (Individuo [] Poblacion){
+		FileReader Fr = null;					// clase de lectura
+		BufferedReader Br = null;				// buffer de lectura
+		String Buf = new String();				// buffer que almacenara los caracteres leidos
+		String [] regla = new String [Configuracion.getNReg()];
+		File F = new File(Configuracion.getSavePath());
+		for(int i = 0 ; i < Configuracion.getNReg() ; i++)
+			regla[i] = new String();
+		
+		
+		try {
+			Fr = new FileReader(F);
+		} catch (FileNotFoundException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
+		
+		Br = new BufferedReader(Fr);
+		
+		/* lee el salto de linea inicial */
+		try {
+			Buf = Br.readLine();
+		} catch (IOException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
+	
+		
+		
+		/* procesamiento de lectura */
+		for(int i = 0 ; i < 3 ; i++){
+			
+			/* lee la generacion */
+			try {
+				Buf = Br.readLine();
+			} catch (IOException e) {
+				// TODO Auto-generated catch block
+				e.printStackTrace();
+			}
+			
+			Poblacion[i].setGeneration(Integer.parseInt(Buf));
+			
+			/* lee la posicion */
+			try {
+				Buf = Br.readLine();
+			} catch (IOException e) {
+				// TODO Auto-generated catch block
+				e.printStackTrace();
+			}
+			
+			Poblacion[i].setPosition(Integer.parseInt(Buf));
+			
+			for(int j = 0 ; j < Configuracion.getNReg() ; j++){
+			
+				/* lee una regla */
+				try {
+					Buf = Br.readLine();
+				} catch (IOException e) {
+					// TODO Auto-generated catch block
+					e.printStackTrace();
+				}
+				
+				/* la divide */
+				
+				regla = Buf.split(" ");
+				for(int k = 0 ; k < Configuracion.getAcc()+Configuracion.getParam() ; k++){
+					if(regla[k].compareTo("true") == 0)
+						Poblacion[i].setGenome(j, k, true);
+					else{
+						Poblacion[i].setGenome(j, k, false);
+					}
+			//		System.out.printf("\n\tEn la posicion %d del elemento %d se pone "+regla[k]+"--->"+Pob[i].getGenome(j, k), k,  j);
+				}
+			}
+		}
+		
+		/* cierre de fichero */
+		try {
+			Fr.close();
+		} catch (IOException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
+		
+
+	}
+	
+	
 	/* Variables */
 	
-	public int nReglas;			// numero de reglas
+	//private int nReglas;			// numero de reglas
 	
-	public int nDep;			// numero de reglas dependientes de eventos
+	//private int nDep;			// numero de reglas dependientes de eventos
 	
 	private Individuo Sujeto;	// sujeto auxiliar
 	
@@ -534,7 +780,7 @@ public class FileGenerator {
 		 *  7 - Repetir desde el paso 2 hasta que se cumpla el criterio de parada
 		 *
 	 */
-	public static void main(String [] args){
+	public static void xmain(String [] args){
 		
 		/* inicializacion */
 		
@@ -565,5 +811,208 @@ public class FileGenerator {
 			for(int j = 0 ; j < nCombatientes ; j++){}
 			
 		}
+	}
+	
+	
+	
+	
+	public static void main(String [] args){
+		Individuo [] Pob = new Individuo [3];
+		
+		for(int i = 0 ; i < 3 ; i++)
+			Pob[i] = new Individuo(200, i);
+		
+		File F = new File ("C:/robocode/PRUEBAS/saves/saveFile.txt");
+		
+		// escribe las codificaciones en un fichero
+
+		FileWriter Fw = null;						
+		try {
+			Fw = new FileWriter(F);
+		} catch (IOException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
+		/* recorre el array de poblacion */
+		/********
+		 * ESCRITURA DE FICHEROS
+		 * -\n
+		 * -generacion
+		 * -\n
+		 * -posicion
+		 * -\n
+		 * -7 veces : \ngen gen gen gen gen ... hasta 10 veces
+		 * 
+		 */
+		for(int i = 0 ; i < 3 ; i++){
+			try {
+				Fw.write("\n"+Pob[i].getGeneration()+"\n"+Pob[i].getPosition());
+				
+			} catch (IOException e) {
+				// TODO Auto-generated catch block
+				e.printStackTrace();
+			}
+			
+			for(int j = 0 ; j < Configuracion.getNReg() ;j ++){
+				try {
+					Fw.write("\n");
+				} catch (IOException e) {
+					// TODO Auto-generated catch block
+					e.printStackTrace();
+				}
+				
+				// escribe los genes
+			
+				for(int k = 0 ; k < Configuracion.getAcc()+Configuracion.getParam() ; k++){
+					if(k == Configuracion.getAcc()+Configuracion.getParam()-1){
+						if(Pob[i].getGenome(j, k) == true){
+							try {
+								Fw.write("true");
+							} catch (IOException e) {
+								// TODO Auto-generated catch block
+								e.printStackTrace();
+							}
+						}
+						
+						else{
+							try {
+								Fw.write("false");
+							} catch (IOException e) {
+								// TODO Auto-generated catch block
+								e.printStackTrace();
+							}
+						}
+					}
+				
+					else{
+						if(Pob[i].getGenome(j, k) == true){
+							try {
+								Fw.write("true ");
+							} catch (IOException e) {
+								// TODO Auto-generated catch block
+								e.printStackTrace();
+							}
+						}
+						else{
+							try {
+								Fw.write("false ");
+							} catch (IOException e) {
+								// TODO Auto-generated catch block
+								e.printStackTrace();
+							}
+						}
+					}
+				}
+			}
+		}
+		
+		
+		try {
+			Fw.close();
+		} catch (IOException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
+
+		
+		// altera el contenido de los individuos
+		
+		for(int i = 0 ; i < 3 ; i++){
+			Pob[i].setPosition(80);
+			for(int j = 0 ; j < Configuracion.getNReg() ; j++){
+				for(int k = 0 ; k < Configuracion.getAcc() + Configuracion.getParam() ; k++){
+					Pob[i].setGenome(j, k, false);
+				}
+			}
+		}
+		
+		/********
+		 * lectura de ficheros
+		 */
+		
+
+		FileReader Fr = null;					// clase de lectura
+		BufferedReader Br = null;				// buffer de lectura
+		String Buf = new String();				// buffer que almacenara los caracteres leidos
+		String [] regla = new String [Configuracion.getNReg()];
+	//	File F = new File()
+		for(int i = 0 ; i < Configuracion.getNReg() ; i++)
+			regla[i] = new String();
+		
+		
+		try {
+			Fr = new FileReader(F);
+		} catch (FileNotFoundException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
+		
+		Br = new BufferedReader(Fr);
+		
+		/* lee el salto de linea inicial */
+		try {
+			Buf = Br.readLine();
+		} catch (IOException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
+	
+		
+		
+		/* procesamiento de lectura */
+		for(int i = 0 ; i < 3 ; i++){
+			
+			/* lee la generacion */
+			try {
+				Buf = Br.readLine();
+			} catch (IOException e) {
+				// TODO Auto-generated catch block
+				e.printStackTrace();
+			}
+			
+			Pob[i].setGeneration(Integer.parseInt(Buf));
+			
+			/* lee la posicion */
+			try {
+				Buf = Br.readLine();
+			} catch (IOException e) {
+				// TODO Auto-generated catch block
+				e.printStackTrace();
+			}
+			
+			Pob[i].setPosition(Integer.parseInt(Buf));
+			
+			for(int j = 0 ; j < Configuracion.getNReg() ; j++){
+			
+				/* lee una regla */
+				try {
+					Buf = Br.readLine();
+				} catch (IOException e) {
+					// TODO Auto-generated catch block
+					e.printStackTrace();
+				}
+				
+				/* la divide */
+				
+				regla = Buf.split(" ");
+				for(int k = 0 ; k < Configuracion.getAcc()+Configuracion.getParam() ; k++){
+					if(regla[k].compareTo("true") == 0)
+						Pob[i].setGenome(j, k, true);
+					else{
+						Pob[i].setGenome(j, k, false);
+					}
+			//		System.out.printf("\n\tEn la posicion %d del elemento %d se pone "+regla[k]+"--->"+Pob[i].getGenome(j, k), k,  j);
+				}
+			}
+		}
+		
+		/* cierre de fichero */
+		try {
+			Fr.close();
+		} catch (IOException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
+		
 	}
 }

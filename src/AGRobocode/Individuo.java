@@ -14,6 +14,8 @@ public class Individuo {
 	
 	/**
 	 * Constructor
+	 * @param generacion a la que pertenece el individuo
+	 * @param posicion del individuo en la poblacion
 	 */
 	public Individuo(int gen, int pos){
 		Configuration = new Regla [Configuracion.getNReg()];/*
@@ -27,21 +29,34 @@ public class Individuo {
 		position = pos;
 	}
 	
+	/**
+	 * Constructor vacío
+	 */
+	public Individuo (){
+		fitness = -1000;
+		elite = false;
+		generation = -1;
+		position = -1;
+		Configuration = null;
+	}	
 	
 	/* ---------------- métodos get/set ---------------- */
 	
 	
 	/**
 	 * Establece un nuevo conjunto de reglas
+	 * @param array de reglas
 	 */
 	public void setConfiguration(Regla eConfiguration []){
-		Configuration = eConfiguration;
+		for(int i = 0 ; i < Configuracion.getNReg(); i++)
+			Configuration[i].setGenotype(eConfiguration[i].getGenotype());
 		fitness = -1000;
 		elite = false;
 	}
 	
 	/**
 	 * Devuelve el conjunto de reglas
+	 * @return configuracion de reglas
 	 */
 	public Regla [] getConfiguration(){
 		return Configuration;
@@ -49,6 +64,8 @@ public class Individuo {
 	
 	/**
 	 * Establece una nueva regla
+	 * @param posicion de la regla en la configuracion
+	 * @param configuracion de la nueva regla
 	 */
 	public void setGenotype(int position, boolean [] eGenotype){
 		Configuration[position].setGenotype(eGenotype);
@@ -57,6 +74,8 @@ public class Individuo {
 	
 	/**
 	 * Devuelve una regla
+	 * @param posicion de la regla a la que se quiere acceder
+	 * @return configuracion de la regla
 	 */
 	public Regla getGenotype(int position){
 		return Configuration[position];
@@ -64,22 +83,29 @@ public class Individuo {
 	
 	/**
 	 * Establece un nuevo elemento en una regla
+	 * @param posicion de la regla en la configuracion
+	 * @param posicion del elemento de la regla
+	 * @param valor de la configuracion a cambiar
 	 */
-	public void setGenome(int position, int rule,  boolean eGenome){
-		Configuration[position].setGenome(rule, eGenome);
+	public void setGenome( int rule, int position,  boolean eGenome){
+		Configuration[rule].setGen(position, eGenome);
 		fitness = -1000;
 		elite = false;
 	}
 	
 	/**
 	 * Devuelve un elemento en una regla
+	 * @param posicion de la regla en la configuracion
+	 * @param posicion del elemento a devolver
+	 * @return elemento de una regla de la configuracion
 	 */
-	public boolean getGenome(int position, int rule){
-		return Configuration[position].getGenome(rule);
+	public boolean getGenome(int rule, int posicion){
+		return Configuration[rule].getGen(posicion);
 	}
 	
 	/**
 	 * Establece un nuevo valor fitness
+	 * @param nuevo valor fitness
 	 */
 	public void setFitness(int eFitness){
 		fitness = eFitness;
@@ -87,6 +113,7 @@ public class Individuo {
 	
 	/**
 	 * Devuelve el valor fitness
+	 * @return valor fitness
 	 */
 	public int getFitness(){
 		return fitness;
@@ -94,6 +121,7 @@ public class Individuo {
 	
 	/**
 	 * Establece el valor elite
+	 * @param nuevo valor de elite
 	 */
 	public void setElite(boolean eElite){
 		elite = eElite;
@@ -101,6 +129,7 @@ public class Individuo {
 	
 	/**
 	 * Devuelve el valor elite
+	 * @return valor elite
 	 */
 	public boolean getElite(){
 		return elite;
@@ -108,38 +137,55 @@ public class Individuo {
 	
 	/**
 	 * Devuelve la generacion
+	 * @return generacion a la que pertenece el individuo
 	 */
 	public int getGeneration(){ return generation; }
 	
 	/**
 	 * Establece la generacion
+	 * @param valor de la nueva generacion
 	 */
 	public void setGeneration(int eGeneracion) { generation = eGeneracion; }
 	
 	/**
 	 * Devuelve la posicion
+	 * @return posicion del individuo en el array poblacion
 	 */
 	public int getPosition(){ return position; }
 
 	/**
 	 * Establece la posicion
+	 * @param posicion del individuo en el array poblacion
 	 */
 	public void setPosition(int ePosicion) { position = ePosicion; }
+	
+	/**
+	 * Copia un Individuo
+	 * @param Individuo del que se copian los atributos
+	 */
+	public void setNew(Individuo I){
+		setConfiguration(I.getConfiguration());
+		setGeneration(I.getGeneration());
+		setPosition(I.getPosition());
+		setElite(I.getElite());
+		setFitness(I.getFitness());
+	}
 	
 	/* ---------------- métodos genéticos ---------------- */
 	
 	
 	/**
 	 * Indica si el individuo esta evaluado
-	 */
+	 * @return true si el individuo ha sido evaluado
+	 *
 	public boolean isEvaluated(){
-		if(fitness > -1000)								//quiza esta no sea la mejor manera de comprobar el fitness
+		if(fitness > 0)
 			return true;
 		return false;
 	}
 	
 	/**
-	 * Genera una configuracion aleatoria de reglas, con las mismas generacion y posicion
+	 * Genera una configuracion aleatoria de reglas, manteniendo generacion y posicion.
 	 */
 	public void newConfig(){
 		Regla [] nConfiguration = new Regla [Configuracion.getNReg()];
@@ -150,39 +196,38 @@ public class Individuo {
 	}
 	
 	/**
-	 * Combina de forma aleatoria los genomas de los genotipos de dos individuos
-	 * 
-	 * Genera una mayor diversidad de individuos
-	 * 
+	 * Combina de forma aleatoria los genomas de los genotipos de dos individuos.
+	 * Genera una mayor diversidad de individuos.
+	 * @param Padre con el que se va a combinar este Individuo.
 	 */
 	public Individuo [] crossDiv (Individuo Padre){
-		Individuo Hijos [] = new Individuo [2];											// 2 es el numero de hijos que obtendremos
-		Regla aux [] = new Regla [2];													// las posiciones de los hijos son temporales y necesitan posterior actualizacion
-		Hijos[0] = new Individuo(generation+1, 0);
-		Hijos[1] = new Individuo(generation+1, 1);
+		Individuo Hijos [] = new Individuo [Configuracion.getNPad()];											// 2 es el número de hijos que obtendremos
+		Regla aux [] = null;
+		for(int i = 0 ; i < Configuracion.getNPad() ; i++){
+		Hijos[i] = new Individuo(generation+1, i);
+		}
 		for(int i = 0 ; i < Configuracion.getNReg() ; i++){								//En cada vuelta genera dos reglas
-			/* invoca al metodo combine de una regla del individuo que invoca el metodo*/
+			/* invoca al método combine de una regla del individuo que invoca el metodo*/
 			aux = Configuration[0].combine(Padre.getGenotype(i), Configuration[i]);
-			Hijos[0].setGenotype(i, aux[0].getGenotype());								//Introduce las reglas en los hijos
-			Hijos[1].setGenotype(i, aux[1].getGenotype());
+			for(int j = 0 ; j < Configuracion.getNPad(); j++){
+			Hijos[j].setGenotype(i, aux[j].getGenotype());								//Introduce las reglas en los hijos
+			}
 		}
 		return mutation(Hijos);															//Al generar un hijo se aplica el operador de mutacion
 	}
 	
 	/**
-	 * Combina de forma aleatoria los genomas del individuo que invoca el metodo y otro individuo
-	 * 
-	 * Implica una mayor velocidad de convergencia
-	 * 
-	 * @param Padre: individuo con el se cruza el objeto que invoca el metodo
-	 * @param pos: posicion del array Hijos
+	 * Combina de forma aleatoria los genomas del individuo que invoca el metodo y otro individuo.
+	 * Implica una mayor velocidad de convergencia.
+	 * @param Individuo con el se cruza el objeto que invoca el método.
+	 * @return pareja de hijos generados.
 	 */
 	public Individuo [] crossCon(Individuo Padre){
-		Individuo Hijos[] = new Individuo [2];
+		Individuo Hijos[] = new Individuo [Configuracion.getNPad()];
 		Random Generator = new Random();
-		Hijos[0] = new Individuo(generation+1, 0);
-		Hijos[1] = new Individuo(generation+1, 1);
-		/* recorre los genomas combinandolos en los hijos de forma aleatoria */
+		for(int i = 0 ; i < Configuracion.getNPad() ; i++)
+		Hijos[i] = new Individuo(generation+1, i);
+		/* recorre los genomas combinándolos en los hijos de forma aleatoria */
 		for(int i = 0 ; i < Configuracion.getNReg() ; i++){
 			if(Generator.nextBoolean() == true){										// Hijo0 reglas de este Individuo ; Hijo1 reglas de Padre
 				Hijos[0].setGenotype(i, getGenotype(i).getGenotype());
@@ -198,14 +243,14 @@ public class Individuo {
 	}
 	
 	/**
-	 * Operador de mutacion
-	 * 
-	 * Se aplican dos operadores de mutacion implementados en la clase Regla
-	 * 
+	 * Operador de mutación.
+	 * Se aplican dos operadores de mutación.
+	 * @param array de hijos cruzados.
+	 * @return array de hijos cruzados y mutados.
 	 */
 	public Individuo [] mutation (Individuo Hijos[]){
 		Random Generator = new Random();
-		for(int i = 0 ; i < 2 ; i++){
+		for(int i = 0 ; i < Configuracion.getNPad() ; i++){
 			if(Math.abs(Generator.nextInt()%10) == Configuracion.getPMut()*10)								// 1 de cada 10 muta
 				Hijos[i].getGenotype(Math.abs(Generator.nextInt()%Configuracion.getNReg())).mutation();		// Genera la mutacion
 			if(Math.abs(Generator.nextInt()%10) == Configuracion.getPMiniMut()*10)							// 2 de cada 10 muta
@@ -219,7 +264,8 @@ public class Individuo {
 	
 	
 	/**
-	 * Comprueba cuantas reglas dependientes tiene un individuo
+	 * Comprueba el número de Reglas sujetas a eventos que tiene este Individuo.
+	 * @return cantidad de Reglas dependientes de eventos
 	 */
 	public int countDep(){
 		int nDep = 0;
@@ -231,10 +277,12 @@ public class Individuo {
 	}
 	
 	/**
-	 * Devuelve un string con el codigo de comportamiento de un individuo 
+	 * Genera un String con el código de comportamiento de este Individuo y lo escribe.
+	 * 
+	 * REVISAR
 	 */
 	public void writeRoboBehav(){
-		/** INICIALIZACION **/
+		/* INICIALIZACION */
 		String temp = new String();
 		String aux = new String();
 		int dependientes [] = new int [Configuracion.getNReg()];
@@ -252,7 +300,6 @@ public class Individuo {
 		try {
 			Fw = new FileWriter(F);
 		} catch (IOException e1) {
-			// TODO Auto-generated catch block
 			System.out.printf("\n--------------------------------------\nError al abrir el fichero.\n--------------------------------------\n");
 			e1.printStackTrace();
 		}
@@ -262,7 +309,6 @@ public class Individuo {
 		try {
 			Fw.write(temp);
 		} catch (IOException e1) {
-			// TODO Auto-generated catch block
 			e1.printStackTrace();
 		}
 		/** PARTE 2 : eventos **/
@@ -277,14 +323,13 @@ public class Individuo {
 		try {
 			Fw.write(temp);
 		} catch (IOException e1) {
-			// TODO Auto-generated catch block
 			e1.printStackTrace();
 		}
 		/** PARTE 3 : Reglas **/
 		/* tab 1 */	
 		for (int i = 0 ; i < Configuracion.getNReg() ; i++){
 			aux = Configuration[i].getRoboRule();										// obtiene el codigo de la regla
-			temp = "\tpublic void regla"+Integer.toString(i)+" ";			// cabecera de la regla
+			temp = "\tpublic void regla"+Integer.toString(i)+" ";						// cabecera de la regla
 			if(Configuration[i].isDep() == true){										// determina si la regla es dependiente a eventos
 				dependientes[nDependientes] = i;										// en caso de serlo la agrega a un vector para su tratamiento posterior
 				nDependientes ++;
@@ -296,7 +341,6 @@ public class Individuo {
 			try {
 				Fw.write(temp);
 			} catch (IOException e1) {
-				// TODO Auto-generated catch block
 				e1.printStackTrace();
 			}
 		}
@@ -307,7 +351,7 @@ public class Individuo {
 		temp = temp + "int contador = 0;\n\t\t";
 		temp = temp + "while (true){\n\t\t\t";
 		/* tab 3 */
-		temp = temp + "contador = contador % nReglas;\n\t\t\t";
+		temp = temp + "contador ++;\n\t\t\t";
 		temp = temp + "if(contador > nReglas)\n\t\t\t\tcontador = contador % nReglas;\n\t\t\t";
 		temp = temp + "switch(contador){";
 		/* tab 4 */
@@ -322,7 +366,6 @@ public class Individuo {
 		try {
 			Fw.write(temp);
 		} catch (IOException e1) {
-			// TODO Auto-generated catch block
 			e1.printStackTrace();
 		}
 		/** PARTE 5 : Evento scannedRobot **/
@@ -359,7 +402,8 @@ public class Individuo {
 	}
 	
 	/**
-	 * Devuelve la configuracion de reglas como un String
+	 * Devuelve la configuración de Reglas como un String.
+	 * @return String con la configuración de reglas no codificada.
 	 */
 	public String getConfigStr(){
 		String Temp = new String("Individuo G"+Integer.toString(generation)+"N"+Integer.toString(position)+"\n");
@@ -371,7 +415,7 @@ public class Individuo {
 	}
 	
 	/**
-	 * Imprime por pantalla la configuracion de reglas del individuo
+	 * Imprime por pantalla la configuración de Reglas del Individuo.
 	 */
 	public void printConfig(){
 		System.out.printf("\nConfiguracion del individuo");
@@ -382,47 +426,55 @@ public class Individuo {
 	}
 	
 	/**
-	 * Indica si dos individuos tienen la misma configuracion de reglas
-	 */
+	 * Indica si dos Individuos tienen la misma configuración de Reglas.
+	 * @param Individuo con el que este Individuo se va a comparar.
+	 * @return true si son diferentes.
+	 *
 	public boolean compareThis(Individuo I){
-		boolean temp = true;
 		for(int i = 0 ; i < Configuracion.getNReg() ; i++){
 			if(getConfiguration()[i].compareThis(I.getConfiguration()[i]) == false){
-				temp = false;
+				return false;
 //				System.out.printf("Regla %d\t--->\t"+Boolean.toString( getConfiguration()[i].compareThis(I.getConfiguration()[i]) ), i );
 			}
 		}
-		return temp;
+		return true;
 	}
 	
-	
+	/**
+	 * Devuelve el nombre de este Individuo
+	 * @return nombre de este Individuo
+	 */
+	public String getName(){
+		String Temp = new String("G"+generation+"N"+position);
+		return Temp;
+	}
 	
 	
 	/* ---------------- variables de clase ---------------- */ 
 	
 	
 	/**
-	 * Valor de adaptacion
+	 * Valor de adaptación.
 	 */
 	private int fitness;
 	
 	/**
-	 * Configuracion de reglas
+	 * Configuración de Reglas.
 	 */
 	private Regla Configuration[];
 	
 	/**
-	 * Etiqueta de elitismo
+	 * Etiqueta de elitismo.
 	 */
 	private boolean elite;
 	
 	/**
-	 * Generacion a la que pertenece
+	 * Generación a la que pertenece.
 	 */
 	private int generation;
 	
 	/**
-	 * Posicion que ocupa en la generacion
+	 * Posición que ocupa en la generación.
 	 */
 	private int position;
 	

@@ -7,18 +7,14 @@ import java.util.Random;
 /**
  * This class represents a generic rule.
  * @author Jesús Bermell Guillén
- * 
- * NOTA : NO ES NECESARIO INSTANCIAR LOS OBJETOS <<Random>>
- * 			VERIFICAR FUNCIONAMIENTO DE SEMILLA EN CASO DE QUE SE CAMBIE EL CODIGO
- * 		COMPROBAR SI ES MEJOR INVOCAR AL METODO DE GENERACION ALEATORIA CON SEMILLA O SIN SEMILLA
- * 
+ *  
  */
 public class Regla {
 	
 	/* ---------------- constructores ---------------- */
 	
 	/**
-	 * Constructor vacio
+	 * Constructor vacío.
 	 */
 	public Regla(){
 		config = new boolean [Configuracion.getAcc() + Configuracion.getParam()];
@@ -26,8 +22,8 @@ public class Regla {
 	}
 	
 	/**
-	 * Constructor parametrizado
-	 * @param eConfig configuracion externa
+	 * Constructor parametrizado.
+	 * @param eConfig configuración externa.
 	 */
 	public Regla(boolean eConfig[] ){
 		config = new boolean [Configuracion.getParam() + Configuracion.getAcc()];
@@ -35,40 +31,53 @@ public class Regla {
 			config[i] = eConfig[i];
 	}
 	
+	
 	/* ---------------- metodos get/set ---------------- */
 	
 	 /**
-	 * Devuelve el genotipo de la regla
+	 * Devuelve el genotipo de la regla.
+	 * @return configuración de la regla.
 	 */
 	public boolean [] getGenotype(){
 		return config;
 	}
 	
 	/**
-	 * Establece un nuevo genotipo en la regla
+	 * Establece un nuevo genotipo en la regla.
+	 * @param configuración nueva.
 	 */
 	public void setGenotype(boolean eConfig[]){
-			config = eConfig;
+		boolean aux;
+		for(int i = 0 ; i < Configuracion.getAcc()+Configuracion.getParam() ; i++){
+			aux = eConfig[i];
+			config[i] =aux;
+		}
+			
 	}
 	
 	/**
-	 * Devuelve un elemento del vector
+	 * Devuelve un elemento del vector.
+	 * @param posición del elemento a devolver.
+	 * @return elemento de la configuracion.
 	 */
-	public boolean getGenome (int position){
+	public boolean getGen (int position){
 		return config[position];
 	}
 
 	/**
-	 * Establece un elemento del vector
+	 * Establece un elemento del vector.
+	 * @param posicion del futuro elemento.
+	 * @param elemento a establecer.
 	 */
-	public void setGenome (int position, boolean eGenome){
+	public void setGen (int position, boolean eGenome){
 		config[position] = eGenome;
 	}
 	
 	/*  ---------------- métodos de escritura de ficheros ---------------- */
 
 	/**
-	 * Devuelve la configuracion como un String
+	 * Devuelve la configuración como un String.
+	 * @return cadena con la configuración de la regla sin codificar.
 	 */
 	public String getConfigStr(){
 		String StrCfg = new String("\n[");
@@ -154,7 +163,8 @@ public class Regla {
 	}
 
 	/**
-	 * Devuelve el codigo de comportamiento de la regla
+	 * Devuelve el código de comportamiento de la regla.
+	 * @return comportamiento de la regla codificado.
 	 */
 	public String getRoboRule(){
 		String temp = new String();
@@ -189,6 +199,8 @@ public class Regla {
 				firstCond = false;
 			}
 		}
+		if(firstCond == true)			//no tiene condicionantes que comprobar
+			temp = temp +"true";
 		temp = temp + "){";
 				
 		for(int i = 0 ; i< Configuracion.getAcc() ; i++){		// bucle de los consecuentes
@@ -221,7 +233,8 @@ public class Regla {
 	
 
 	/**
-	 * Indica si la regla esta sujeta a eventos
+	 * Indica si la regla esta sujeta a eventos.
+	 * @return true si la regla depende de eventos.
 	 */
 	public boolean isDep(){
 		if((config[3] == true)||(config[4] == true))		//si se comprueban las condiciones sujetas a eventos, la regla es dependiente
@@ -231,11 +244,10 @@ public class Regla {
 	}
 	
 	/**
-	 * Compara dos reglas
-	 * @param R regla a comparar
-	 * @return true si son iguales, false si son diferentes
+	 * Compara dos reglas.
+	 * @param R regla a comparar.
+	 * @return true si son iguales, false si son diferentes.
 	 * 
-	 * NOTA: esta funcion no se para que puede servir. Quiza para saber si dos individuos son iguales, pero revisar de igual manera
 	 * 
 	 * 														REVISAR
 	 * 
@@ -254,39 +266,41 @@ public class Regla {
 	/* ---------------- métodos genéticos ---------------- */
 	
 	/**
-	 * Combina dos genotipos de dos Reglas
+	 * Combina dos genotipos de dos Reglas.
+	 * @param regla a combinar.
+	 * @param regla a combinar.
+	 * @return array con dos reglas resultantes de combinar los parámetros de entrada.
 	 */
 	public Regla [] combine (Regla R1, Regla R2){
-		/* inicializacion */
+		/* inicialización */
 		Regla Combined [] = new Regla [2];
 		Random Generator = new Random ();
 		Combined[0] = new Regla();
 		Combined[1] = new Regla();
 		/* Introduce los genomas de forma aleatoria */
 		for(int i = 0 ; i < Configuracion.getParam()+Configuracion.getAcc() ; i++){
-			if(Generator.nextBoolean() == true){						// se quedan como estan
-				Combined[0].setGenome(i, R1.getGenome(i));
-				Combined[1].setGenome(i, R2.getGenome(i));
+			if(Generator.nextBoolean() == true){						// se quedan como están
+				Combined[0].setGen(i, R1.getGen(i));
+				Combined[1].setGen(i, R2.getGen(i));
 			}
 			else{														// intercambia valores
-				Combined[1].setGenome(i, R2.getGenome(i));
-				Combined[0].setGenome(i, R1.getGenome(i));
+				Combined[1].setGen(i, R2.getGen(i));
+				Combined[0].setGen(i, R1.getGen(i));
 			}
 		}
 		return Combined;
 	}
 	
 	/**
-	 * Generador de configuracion
-	 * crea una configuracion de regla aleatoria
+	 * Generador de configuración.
+	 * Crea una configuración de regla aleatoria.
 	 */
 	public void newConfig(){
 		boolean temp [] = new boolean [Configuracion.getParam()+Configuracion.getAcc()];
 		Random ran = new Random(); 
-		for(int i = 0 ; i < (Configuracion.getParam()+Configuracion.getAcc()); i++){//va generando true y false para el vector
+		for(int i = 0 ; i < (Configuracion.getParam()+Configuracion.getAcc()); i++){//va generando los valores para el array
 			temp[i]= ran.nextBoolean();
 		}
-		//aqui se pondrian las comprobaciones necesarias de la configuracion a nivel individual
 		config = temp;
 	}
 
@@ -303,10 +317,6 @@ public class Regla {
 	
 	/**
 	 * Intercambia los valores de dos posiciones de una misma regla.
-	 * 
-	 * NOTA : no se verifica si los valores de la configuracion son iguales.
-	 * 			(en caso de serlo esta funcion no implica cambio alguno)
-	 * 
 	 */
 	public void miniMutation(){
 		Random Generator = new Random();
@@ -329,9 +339,9 @@ public class Regla {
 	/* ---------------- métodos auxiliares ---------------- */
 	
 	/**
-	 * Muestra por pantalla la configuracion actual
+	 * Muestra por pantalla la configuracion actual.
 	 * 
-	 * NOTA: esta funcion no tiene utilidad clara. 						REVISAR
+	 * 					REVISAR
 	 * 
 	 */
 	public void printConfig(){
@@ -351,11 +361,14 @@ public class Regla {
 	}
 	
 	/**
-	 * Vector de booleanos, refleja la configuración de la regla
+	 * Vector de booleanos, refleja la configuración de la regla.
 	 * Su tamaño vendrá determinado por la cantidad de parámetros (Configuracion.getParam())
-	 * y la cantidad de acciones por ejecutar (Configuracion.getAcc())
+	 * y la cantidad de acciones por ejecutar (Configuracion.getAcc()).
 	 */
 	private boolean config [];
+	
+	/////////////////////////////////////////////////////////////////////////////////////////////
+	/////////////////////////////////////////////////////////////////////////////////////////////
 	
 	/**
 	 * Funcion main para testear todos los métodos internos

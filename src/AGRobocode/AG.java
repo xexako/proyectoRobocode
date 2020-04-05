@@ -1,13 +1,10 @@
 package AGRobocode;
-//elitismo y cruce por ruleta..................................................POR HACER
-//cache de evaluados...........................................................PLANTEARSELO
-//ejecutar robocode con linea de comandos......................................HECHO
-//mirar si roocode usa pipes (tuberias)........................................NO NECESARIO
 
 import AGRobocode.Individuo;
 
 import java.util.Random;
 import java.util.Scanner;
+import java.util.concurrent.TimeUnit;
 import java.io.BufferedReader;
 import java.io.FileNotFoundException;
 import java.io.FileReader;
@@ -31,99 +28,21 @@ public class AG {
 	public AG(){
 		//poblacion inicial, los robots estan listos
 		Poblacion = new Individuo [Configuracion.getTPob()];				// array de individuos, poblacion
-		Hijos = new Individuo [Configuracion.getTPob()];					// poblacion temporal con la nueva generacion
-		Elite = new Individuo [Configuracion.getNElite()];					// poblacion elite, tamaño 10% poblacion
+		Hijos = null;														// poblacion temporal con la nueva generacion
+		Elite = null;														// poblacion elite, tamaño 10% poblacion
 		generacion = 0;
 		posicion = 0;
+		resetBattleCounter();
 		for(int i = 0 ; i < Configuracion.getTPob() ; i++){
 			Poblacion[i] = new Individuo(generacion, posicion);
 			incrementPos();
 		}
+		
+		posicion = 0;
 	}
 	
 	/* ---------------- métodos genéticos ---------------- */
 	
-	/**
-	 * Iniciador
-	 */
-	
-	/**
-	 * Funcion de Evaluacion
-	 * Para evaluar a los individuos:
-	 * 1-Toma el primer individuo. (genera fichero de batalla)
-	 * 2-Lo enfrenta recursivamente con el resto de sus compañeros.
-	 * 3-Discrimina el valor de la victoria del individuo en cuestion y lo acumula en una variable.
-	 * 4-Hace la media del valor acumulado y la asigna a fitness
-	 * 5-Toma el siguiente individuo.
-	 * 6-Repetir desde 2
-	 */
-	public void evaluation(){
-		float acumulador = 0;										// servira para ir incrementando los resultados del individuo a evaluar
-		int nBatalla = 0;											// contador de batalla
-		int contador = 0;
-		FileGenerator Fg = new FileGenerator(Poblacion[0]);
-		
-		//primero genero ficheros de batalla
-		for(int i = 0 ; i < Configuracion.getTPob() ; i ++){
-			Fg.next(Poblacion[i]);
-			for(int j = 0 ; j < Configuracion.getTPob() ; j++){
-				if(i != j){
-					System.out.printf("");
-					Fg.genBattle(i, j, generacion, nBatalla);
-					nBatalla++;										// nBatalla va dentro del bucle para que no ejecute robocode sin fichero de batalla correspondiente
-				}
-				// nBatalla ++; 		si esta orden fuera en este lugar, habria saltos en las enumeraciones de los ficheros
-			}
-			
-		}
-		System.out.printf("\n\tBATALLAS GENERADAS");
-		//nBatalla = 0;
-		//ahora invoco robocode y genero ficheros resultado
-		for(int i = 0 ; i < nBatalla ; i++){
-			//	nBatalla++;
-			invokeRoboCode(i);
-		}
-		// por ultimo extraigo el valor y discrimino
-		for(int i = 0 ; i < nBatalla ; i++){												// hay 99 batallas por robot
-			acumulador = acumulador + Fg.getBattleResults(Configuracion.getRPath()+"resultados"+Integer.toString(nBatalla%99)+"txt", "G"+Integer.toString(generacion)+"N"+Integer.toString(contador));
-			if(i%99 == 0)
-				contador++; 
-			///////////////////////////////////////////////////
-/*				if(i != j){											// no se enfrenta consigo mismo
-					nBatalla = 0;									// esta orden provoca error de funcionamiento
-					acumulador = 0;
-					/* genera fichero de batalla *
-					Fg.genBattle(i, j, generacion, nBatalla);
-					/* enfrentamiento *
-					invokeRoboCode(nBatalla);
-					try {
-						Thread.sleep(1000);							// espera a que escriba el fichero
-					} catch (InterruptedException e) {
-						// TODO Auto-generated catch block
-						e.printStackTrace();
-					}
-					/* discrimina el valor de victoria *
-					acumulador = acumulador + Fg.getBattleResults("resultados"+Integer.toString(nBatalla)+".txt", "G"+Integer.toString(generacion)+"N"+Integer.toString(i));
-				}
-				nBatalla++;
-			}
-			/////////////////////////////////////////////////////
-			/* media del valor acumulado */
-			if(acumulador != 0){
-				acumulador = acumulador/nBatalla;
-			}
-			Poblacion[contador].setFitness((int) acumulador);				// SI ESTO DA FALLO INVOCAR AL METODO intValue DE LA CLASE Float***************************************
-		}
-		
-	}
-	
-	/**
-	 * Operador de mutacion
-	 * INCLUIDO EN INDIVIDUO
-	 * 
-	 * NOTA : revisar métodos internos
-	 * 
-	 */
 	
 	/**
 	 * Operador de cruce
@@ -139,18 +58,17 @@ public class AG {
 	 * 
 	 */
 	public void cross(Individuo Padres []){
-		Individuo [] Generados = null;
+		Individuo [] Generados = new Individuo[Configuracion.getNPad()];
 		if(generacion <= (int) (Configuracion.getCritParada()/2))
 			Generados = Padres[0].crossDiv(Padres[1]);
 		else
 			Generados = Padres[0].crossCon(Padres[1]);
 		/* actualiza posiciones e inserta en el array */
-		Generados[0].setPosition(posicion);
-		Hijos[posicion] = Generados[0];
-		incrementPos();
-		Generados[1].setPosition(posicion);
-		Hijos[posicion] = Generados[1];
-		incrementPos();
+		for(int i = 0 ; i < Configuracion.getNPad(); i++){
+			Generados[i].setPosition(posicion);
+			Hijos[posicion].setNew(Generados[i]);
+			incrementPos();
+		}
 	}
 	
 	/**
@@ -160,39 +78,102 @@ public class AG {
 	 * Genera un numero aleatorio entre 0 y 1.
 	 * Recorre el vector de valores proporcionales y se para cuando la suma excede el valor dado.
 	 * 	
-	 * NOTA : comprobar que un individuo no se enfrenta consigo mismo ---> servirse de los metodos de Regla
 	 */
 	public Individuo [] selection(){
+		
 		/* variables */
+		int i, seleccionado = -1;
+		boolean repetido = false;
 		double relacion, suma = 0, pesos [];
-		pesos = new double [Configuracion.getTPob()];					//contendra la ruleta, es decir, si el primero vale 2 y el segundo vale 5, en pesos[segundo] = 7
+		pesos = new double [Configuracion.getTPob()];//contendra la ruleta, es decir, si el primero vale 2 y el segundo vale 5, en pesos[segundo] = 7
 		Random Generator = new Random();
 		Individuo Padres[] = new Individuo [Configuracion.getNPad()];
+		for(i = 0 ; i < Configuracion.getNPad(); i++)
+			Padres[i] = new Individuo(-1, -1);
+		/////////////////////////////////////////////////////////
+//		System.out.printf("\n\tVector de pesos:");
+		
 		/* primero calcula la relacion de porciones */
-		for(int i = 0 ; i < Configuracion.getTPob() ; i++)
+		for(i = 0 ; i < Configuracion.getTPob() ; i++)
 			suma = suma + Poblacion[i].getFitness();
 		relacion = 1/suma;
 		suma = 0;
-		for(int i = 0 ; i < Configuracion.getTPob() ; i++){				//multiplica la relacion (regla de 3) para que la resultante salga 1
+		for(i = 0 ; i < Configuracion.getTPob() ; i++){				//multiplica la relacion (regla de 3) para que la resultante salga 1
 			pesos[i] = relacion*Poblacion[i].getFitness();
 			suma = suma + pesos[i];
 			pesos[i] = suma;											//en el vector se muestran los resultados de las sumas de los elementos anteriores
+			
+			/////////////////////////////////////////////////////
+	//		System.out.printf("\n\t\t%d = %f",i, pesos[i]);
+			
 		}
+		
+		
+	//	System.out.printf("\n\tseleccion de padres");
+		
 		/* seleccion de padres */
-		for(int i = 0; i < Configuracion.getNPad() ; i++){				//selecciono los padres necesarios
-				relacion = Generator.nextInt()%100;						//seleccion aleatoria del individuo
-				relacion = relacion/100;								//ajusto el resultado al tamaño de la ruleta
-				for(int j = 0 ; j < Configuracion.getTPob() ; j++){		//recorro el vector pesos
-					suma = 0;
-					if(suma <= relacion)								//para cuando la suma de las porciones supera el limite
-						suma = suma + pesos[j];
-					else{												//se para justamente cuando sobrepasa
-						relacion = j;
-						break;
+		i = 0;
+		do{				//selecciono los padres necesarios
+			
+			//////////////////////////////////////////////
+		//	System.out.printf("\n\t\tTirando dado...");
+			
+			
+			relacion = Math.abs(Generator.nextFloat());						//seleccion aleatoria del individuo
+			
+			
+			//////////////////////////////////////////////
+		//	System.out.printf("resultado = %f", relacion);
+			
+			
+			for(int j = 0 ; j < Configuracion.getTPob() ; j++){					//recorro el vector pesos
+				if(relacion <= pesos[j] && seleccionado < 0)								//para cuando la suma de las porciones supera el limite
+					seleccionado = j;
+			}
+			
+			
+			//////////////////////////////////////////////
+	//		System.out.printf("\n\t\tPadre seleccionado = %d",seleccionado);
+			
+			
+			
+			if(seleccionado < 0) { System.out.printf("\nERROR AL SELECCIONAR LOS PADRES"); }
+			else{
+				for(int j = 0 ; j < i ; j++){
+					if(Padres[j].getName().compareTo(Poblacion[seleccionado].getName())==0){
+						repetido = true;
+						
+/*						
+						try {
+							TimeUnit.SECONDS.sleep(1);
+						} catch (InterruptedException e) {
+							// TODO Auto-generated catch block
+							e.printStackTrace();
+						}
+						
+						System.out.printf("\n<<<<<<<IGUALES!>>>>>>>"+Padres[j].compareThis(Poblacion[seleccionado]));
+*/					}
+					else{
+					
+						
 					}
 				}
-				Padres[i] = Poblacion[(int)relacion];					//rellena el vector de padres seleccionados
+				
+				if(repetido == false){
+					Padres[i].setNew(Poblacion[seleccionado]);					//rellena el vector de padres seleccionados
+					i++;
+				}
+				else
+					repetido = false;
+				seleccionado = -1;
+			}
+		}while(i < Configuracion.getNPad());
+		
+		
+/*		for(i = 0 ; i < Configuracion.getNPad() ; i++){
+			System.out.printf("\nPadre[%d] = "+Padres[i].getName(), i);
 		}
+	*/	
 		return Padres;
 	}
 	
@@ -210,26 +191,43 @@ public class AG {
 	 * 		6- reemplaza la generacion anterior.
 	 * 
 	 */
-	public void replacement(){
-		/* inicializacion */
-		FileGenerator Fg = new FileGenerator(Elite[0]);
+	public void replacement(FileGenerator Fg){
+		
 		/* copia los elite */
 		for(int i = 0 ; i < Configuracion.getNElite() ; i++){
-			Hijos[i] = Elite [i];									// actualizamos en el array hijos
+			Hijos[i].setNew(Elite [i]);									// actualizamos en el array hijos
 			Hijos[i].setGeneration(generacion+1);
 			Hijos[i].setPosition(i);
 			Hijos[i].setFitness(-1000);
 		}
+		
+		
+		
+		//////////////////////////////////
+		/*
+		System.out.printf("\n******************************************************");
+		System.out.printf("\nHijos + elite:\n");
+		for(int i = 0 ; i < Configuracion.getTPob() ; i++)
+			System.out.printf("\n\t%d = "+Hijos[i].getName(), i);
+		System.out.printf("\n******************************************************");
+		*/
+		///////////////////////////////////
+		
+		
 		/* Borra ficheros de comportamiento de la generacion anterior */
-		deleteGenFiles();
+		Fg.deleteOld(generacion);
 		/* Borra los ficheros de resultado y batalla */
 		Fg.removeBat(generacion);
 		Fg.removeRes();
+		Fg.deleteClasses(generacion);
 		generacion++;
-		/* Genera ficheros de comportamiento de la nueva generacion */
-		writeGenFiles();
+
 		/* Reemplaza la generacion anterior */
-		Poblacion = Hijos;
+		for(int i = 0 ; i < Configuracion.getTPob() ; i++)
+			Poblacion[i].setNew(Hijos[i]);
+
+		/* Genera ficheros de comportamiento de la nueva generacion */
+		writeGenFiles(Fg);		
 	}
 	
 	/**
@@ -253,26 +251,35 @@ public class AG {
 	 * 		-averiguamos el mejor llamando a la funcion max
 	 * 		-marcamos como elite a ese individuo en la poblacion original y lo quitamos de la copia
 	 * 		-repetimos hasta haber marcado los individuos necesarios
+	 * 
+	 * 
+	 * 
+	 * REVISAR
+	 * 
+	 * 
+	 * 
 	 */
 	public void elitism (){
-		int requeridos = Configuracion.getNElite();	 			//el 10% de la poblacion
+		
+		/*System.out.printf("\n---------------------------\nPoblacion de hijos antes del elitismo:");
+		
+		for(int i = 0 ; i < Configuracion.getTPob(); i++){
+			System.out.printf("\n%d "+Hijos[i].getName(), i);
+		}*/
+		
 		int aux;
-		Individuo CopyPop[] = new Individuo [(int) requeridos];
-		FileGenerator Fg = null;
+		Individuo CopyPop[] = new Individuo [Configuracion.getTPob()];
+		for(int i = 0 ; i < Configuracion.getTPob() ; i++){	CopyPop[i] = new Individuo(-1, -1); }
+		
 		for(int i = 0 ; i < Configuracion.getTPob() ; i++){
-			CopyPop[i] = Poblacion[i];								//copiamos la poblacion
-			Poblacion[i].setElite(false);							//quitamos todo el conjunto elite hasta ahora
+			CopyPop[i].setNew(Poblacion[i]);								// copiamos la poblacion
+			Poblacion[i].setElite(false);									// quitamos todo el conjunto elite hasta ahora
 		}
-		for(int i = 0 ; i < requeridos ; i++){				//en cada vuelta se marca un elite
+		for(int i = 0 ; i < Configuracion.getNElite() ; i++){				// en cada vuelta se marca un elite
 			aux = max(CopyPop);
-			Poblacion[aux].setElite(true);							//marcamos en la poblacion original
-			CopyPop[aux].setFitness(-1);							//quitamos al mejor de la poblacion copia
-			Elite[i] = Poblacion[aux];								//agregamos al elite en la poblacion elite
-		}
-		/* escribe el fichero de report de los individuos elite */
-		if(generacion%10000 == 0){							//condicion de report
-			Fg = new FileGenerator(Elite[0]);
-			Fg.genLogElite(Elite);
+			Poblacion[aux].setElite(true);									// marcamos en la poblacion original
+		//	CopyPop[aux].setFitness(-1);									// quitamos al mejor de la poblacion copia
+			Elite[i].setNew(Poblacion[aux]);								// agregamos al elite en la poblacion elite
 		}
 	}
 	
@@ -280,12 +287,13 @@ public class AG {
 	
 	/**
 	 * Devuelve la posicion del individuo con mayor fitness de un grupo de Individuos
+	 * 
 	 */
 	public int max (Individuo Padres []){
 		int max = -1000;
 		int posicion = -1;
-		for(int i = 0 ; i < Configuracion.getTTor(); i++){
-			if(max < Padres[i].getFitness()){
+		for(int i = 0 ; i < Configuracion.getTPob(); i++){
+			if(max < Padres[i].getFitness() && Padres[i].getElite() == false){
 				max = max + Padres[i].getFitness();
 				posicion = i;
 			}
@@ -307,8 +315,7 @@ public class AG {
 	 * Los ficheros se guardaran en la ruta de Robocode por defecto para los robots a ejecutar.
 	 * 
 	 */
-	public void writeGenFiles(){
-		FileGenerator Fg = new FileGenerator(Poblacion[0]);
+	public void writeGenFiles(FileGenerator Fg){
 		for(int i = 0 ; i < Configuracion.getTPob() ; i++){
 			Fg.next(Poblacion[i]);
 			Fg.writeFile();
@@ -320,7 +327,11 @@ public class AG {
 	 * 
 	 * NOTA : esta funcion debe llamarse SIEMPRE DESPUES DE GENERAR UNA NUEVA POBLACION
 	 * 
-	 */
+	 * 
+	 * REVISAR
+	 * 
+	 * 
+	 *
 	public void deleteGenFiles(){
 		FileGenerator Fg = new FileGenerator(Poblacion[0]);
 		Fg.deleteOld(generacion);
@@ -328,12 +339,30 @@ public class AG {
 	
 	/**
 	 * Actualiza la posicion
+	 * 
+	 * 
+	 * CONFIGURACION DE TESTEO
 	 */
 	public void incrementPos(){
 		posicion++;
-		if(posicion >=100)
-			posicion = 10;							// los 10 primeros puestos del array siempre estaran ocupados por los elite de la generacion anterior
+		if(posicion >=Configuracion.getTPob())
+			posicion = Configuracion.getNElite();							// los 10 primeros puestos del array siempre estaran ocupados por los elite de la generacion anterior
 	}
+	
+	/**
+	 * Incrementa el contador de batalla
+	 */
+	public void incrementBattleCounter() { contadorBatalla++; }
+	
+	/**
+	 * Resetea el contador de batalla
+	 */
+	public void resetBattleCounter(){ contadorBatalla = 0; }
+	
+	/**
+	 * Resetea el indicador de posicion
+	 */
+	public void resetPosition(){ posicion = Configuracion.getNElite(); }
 	
 	/**
 	 * llama a robocode para que se enfrenten dos individuos cargando un fichero de batalla
@@ -341,68 +370,162 @@ public class AG {
 	 * NOTA : los ficheros deben estar compilados antes de llamar a esta funcion, y los de batalla de la generacion anterior destruidos
 	 * 
 	 * **************REVISAR*****************
+	 * 
+	 * 
 	 * Configuracion.getInvokeCmd y su homonima necesitan que se les pase el nombre del fichero de batalla(elemento 8) y el de resultados (elemento 10)
 	 * 
 	 */
-	public void invokeRoboCode(int batalla){
-		String [] Cmd = null;					// cadena de comando 
-		FileGenerator Fg = null;
-		/* condicion de report : invoca robocode en primer plano y escribe los comportamientos */
-	/*	if(generacion % 10000 == 0){
-			Cmd = Configuracion.getInvokeCmdDisplayed();		//hay que introducir el nombre del fichero de batalla y el de resultados
-			Cmd[7] = Cmd[7]+"G"+Integer.toString(generacion)+"B"+Integer.toString(batalla)+".battle";
-			Cmd[9] = Cmd[9]+"R"+Integer.toString(batalla)+".txt";
-			/* invoca robocode en primer plano */
-/*			try {
-				Runtime.getRuntime().exec(Cmd);
-			} catch (IOException e) {
-				// TODO Auto-generated catch block
-				e.printStackTrace();
-			}
-			/* esccribe el fichero de report de toda la generacion */
-/*			Fg = new FileGenerator(Poblacion[0]);
-			Fg.genLogFile(Poblacion);
+	public void invokeRoboCode(boolean record){
+		String [] Cmd = new String[13];					// cadena de comando 
+		/* obtiene el comando para ejecutar Robocode */
+		for(int i = 0 ; i < 13 ; i++){
+			Cmd[i] = new String(Configuracion.getInvokeCmd()[i]);
 		}
-		/* invoca robocode de forma normal */
-//		else{
-			/* obtiene el comando de ejecucion */
-			///////////////////////////////////////////////////////
-			System.out.printf("\n\tOBTENGO COMANDO DE EJECUCION BATALLA %d", batalla);
-			///////////////////////////////////////////////////////
-			Cmd = Configuracion.getInvokeCmd();					// hay que introducir el nombre del fichero de batalla y el de resultados
-			Cmd[7] = Cmd[7]+"G"+Integer.toString(generacion)+"B"+Integer.toString(batalla)+".battle";
-			Cmd[9] = Cmd[9]+"R"+Integer.toString(batalla)+".txt";
-			///////////////////////////////////////////////////////
-			System.out.printf("\n\tCOMANDO OBTENIDO:\n\t\t");
-			for(int i = 0 ; i < 10 ; i++)
-				System.out.printf(Cmd[i]+" ");
-			///////////////////////////////////////////////////////
+		Cmd[7] = Cmd[7]+"G"+Integer.toString(generacion)+"B"+Integer.toString(contadorBatalla)+".battle";
+		Cmd[9] = Cmd[9]+"R"+Integer.toString(contadorBatalla)+".txt";
+		if(record == true){
+			// graba las batallas de la primera y de la ultima generacion
+			Cmd[11] = Cmd[11] + "-record";
+			Cmd[12] = Cmd[12] + "C:/robocode/reports/ReportGen"+generacion+"Bat"+contadorBatalla+".br";
+		}
 			
-			
-			/* invoca robocode en segundo plano */
-			try {
-				System.out.printf("\n\tINVOCANDO ROBOCODE.....................................");
-				Runtime.getRuntime().exec(Cmd);
-			} catch (IOException e) {
-				// TODO Auto-generated catch block
-				e.printStackTrace();
-			}
-		
-			//////////////////////////////////////////////////////////
-				Cmd[7] = "";
-				Cmd[9] = "";
-			///////////////////////////////////////////////////////////
-			
-		}/*
-		// reseteo de Cmd				
-		Cmd[7] = "";
-		Cmd[9] = "";
+		/* invoca Robocode en segundo plano */
+		try {
+			Runtime.getRuntime().exec(Cmd);
+		} catch (IOException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
 
-	}*/
+	}
+	
 	
 	/**
-	 * selecciona los individuos que van a enfrentarse, comprobando que no se han enfrentado previamente y que no se enfrentan los mismos individuos
+	 * Devuelve un Individuo.
+	 * @param posicion del Individuo en la población.
+	 * @return Individuo seleccionado
 	 */
+	public Individuo getIndividuo(int individuo){ return Poblacion[individuo]; }
+	
+	
+	
+	/**
+	 * selecciona los individuos que van a enfrentarse
+	 * comprobando no se enfrentan los mismos individuos
+	 * 
+	 * 		1- Selecciona un grupo de Individuos.
+	 * 			1.1- Comprueba que no se enfrenta un Individuo consigo mismo
+	 * 		2- Genera ficheros de batalla
+	 * 		3- Ejecuta Robocode
+	 * 		(4- Espera que los ficheros de resultado se generen.)
+	 */
+	public void setFight(){
+		Individuo [] Enemigos = new Individuo [Configuracion.getTTor()];
+		for(int i = 0 ; i < Configuracion.getTTor(); i++){
+			Enemigos[i] = new Individuo(-1,-1);				// establece este individuo temporalmente
+		}
+		Random Rg = new Random();
+		FileGenerator Fg = new FileGenerator(Poblacion[0]);	// establece este individuo temporalmente
+		int aux = -1;
+		int enemigo, contador = 0;
+		boolean seleccionado;
+		
+		/* genero ficheros de batalla */
+		for(int j = 0; j < Configuracion.getTPob(); j++){
+			enemigo = 0;
+			/* selecciono enemigos */
+			do{
+				seleccionado = true;
+				aux = Math.abs(Rg.nextInt()%Configuracion.getTPob());		// elige la posición del enemigo
+				for(int i = 0 ; i < enemigo ; i++){
+					if(aux == Enemigos[i].getPosition()||aux == posicion)	// comprueba si se repite 
+						seleccionado = false;
+				}
+				if(seleccionado == true){									// si no se repite, se selecciona para el combate
+					Enemigos[enemigo].setNew(Poblacion[aux]);
+					enemigo++;
+				}
+			}while(enemigo < Configuracion.getTTor());
+		
+			/* generación ficheros de batalla */
+			for(int i = 0 ; i < Configuracion.getTTor(); i++){
+				Fg.next(Enemigos[i]);
+				Fg.genBattle(posicion, Enemigos[i].getPosition(), generacion, contador);
+				contador++;
+			}
+			aux = -1;
+		}
+	}
+	
+	/**
+	 * Genera los ficheros de informe de los robots
+	 */
+	public void genLog(FileGenerator Fg){
+		Fg.writeLog(Poblacion);
+	}
+	
+	
+	/**
+	 * Actualiza el valor fitness para un Individuo
+	 */
+	public void setFitness(int individuo, int fitness) {
+		Poblacion[individuo].setFitness(fitness);
+	}
+	
+	/**
+	 * Libera la memoria usada por la poblacion
+	 */
+	public void letsFreeThis(){
+		for(int i = 0 ; i < Configuracion.getTPob() ; i++)
+			Poblacion[i] = null;
+		Poblacion = null;
+	}
+	
+	/**
+	 * Libera la memoria usada por los hijos
+	 */
+	public void freeChildren(){
+		for(int i = 0 ; i < Configuracion.getTPob() ; i++)
+			Hijos[i] = null;
+		Hijos = null;
+	}
+	
+	/**
+	 * Libera la memoria usada por los elite
+	 */
+	public void freeElite(){
+		for(int i = 0 ; i < Configuracion.getNElite() ; i++)
+			Elite[i] = null;
+		Elite = null;
+	}
+	
+	/**
+	 * inicicializa la poblacion
+	 */
+	public void reinitiatePob(){
+		Poblacion = new Individuo [Configuracion.getTPob()];
+		for(int i = 0 ; i < Configuracion.getTPob() ; i++){
+			Poblacion[i] = new Individuo(generacion, posicion);
+		}
+	}
+	
+	/**
+	 * Inicializa el conjunto elite
+	 */
+	public void initiateElite(){
+		Elite = new Individuo[Configuracion.getNElite()];
+		for(int i = 0 ; i < Configuracion.getNElite(); i++)
+			Elite[i] = new Individuo(-1, -1);
+	}
+	
+	/**
+	 * Inicializa la poblacion de hijos
+	 */
+	public void initiateChildren(){
+		Hijos = new Individuo [Configuracion.getTPob()];
+		for(int i = 0 ; i < Configuracion.getTPob() ; i++)
+			Hijos[i] = new Individuo(-1, -1);
+	}
 	
 	/**
 	 * Devuelve la generacion
@@ -410,113 +533,68 @@ public class AG {
 	public int getGeneration() { return generacion; }
 	
 	/**
+	 * Devuelve la posicion
+	 */
+	public int getPosition() { return posicion; }
+	
+	/**
 	 * Devuelve la poblacion
 	 */
 	public Individuo[] getPob() { return Poblacion; }
+	
+
+	/**
+	 * Devuelve el contador de batalla.
+	 * @return contador de batalla
+	 */
+	public int getBattleCounter() { return contadorBatalla; }
+
+	
+	/**
+	 * Muestra por pantalla los nombres de los Individuos de esta generación.
+	 */
+	public void printGeneration(){
+		for(int i = 0 ; i < Configuracion.getTPob() ; i++)
+			System.out.printf("\nIndividuo %d = "+Poblacion[i].getName(), i);
+	}
 	
 	/* ---------------- variables ---------------- */
 	
 	/**
 	 * Poblacion de robots
 	 */
-	private Individuo Poblacion [];
+	static private Individuo Poblacion [];
 	
 	/**
 	 * Hijos generados
 	 */
-	private Individuo Hijos [];
+	static private Individuo Hijos [];
 	
 	/**
 	 * Poblacion elite
 	 */
-	private Individuo Elite[];
+	static private Individuo Elite[];
 	
 	/**
 	 * Contador de posicion para la nueva generacion
-	 * Indica la siguiente posicion libre
+	 * Indica la siguiente posicion libre en el array Hijos
 	 */
-	private int posicion;
+	static private int posicion;
 	
 	/**
 	 * Contador de generacion
 	 * Indica la generacion mas vieja en funcionamiento
 	 */
-	private int generacion;
+	static private int generacion;
 	
+	/**
+	 * Contador de batalla
+	 * Indica la siguiente batalla que escribir
+	 */
+	static private int contadorBatalla;
 	
-	/* funcion main de prueba */
-	/* testea el formato de guardado del fichero generado por Robocode tras cada batalla */
-	public static void main1 (String [] args){
-		/* inicializacion */ 
-		int contador = 0;
-		BufferedReader Br = null;
-		File F = null;
-		FileReader Fr = null;
-		String Buff = new String();
-		String [] Info1 = null, Info2 = null;			// info1 = resultados primer robot, info2 = resultados segundo robot
-		String [] Relleno = {"Puntuación: ", "Daño infligido: ", "Veces que ha quedado primero: ", "Veces que ha quedado segundo: ", "Veces que ha quedado tercero: "};
-		String [] Cmd = {"java", "-Xmx512M", "-Dsun.io.useCanonCaches=false", "-cp", "libs/robocode.jar", "robocode.Robocode", "-battle", "battles/prueba1.battle", "-results", "resultados/resultados.txt", "-nodisplay" };
-		Info1 = new String[11];
-		Info2 = new String[11];
-		for(int i = 0 ; i < 11 ; i++){
-			Info1[i] = new String();
-			Info2[i] = new String();
-		}
-		F = new File("/C:/robocode/resultados/resultados.txt");
-		/* ejecuta robodode  */
-		try {
-			Runtime.getRuntime().exec(Cmd);
-		} catch (IOException e1) {
-			// TODO Auto-generated catch block
-			e1.printStackTrace();
-		}
-		/* abre el fichero resultado */
-		try {
-			Fr = new FileReader (F);
-		} catch (FileNotFoundException e) {
-			// TODO Auto-generated catch block
-			e.printStackTrace();
-		}
-		Br = new BufferedReader(Fr);
-		/* procesa la informacion */
-		for(int i = 0 ; i < 4 ; i++){
-			try {
-				Buff = Br.readLine();					//lectura
-			} catch (IOException e1) {
-				// TODO Auto-generated catch block
-				e1.printStackTrace();
-			}
-			if(i == 2){
-				Info1 = Buff.split("\t");				//discriminacion
-			}
-			if(i == 3){
-				Info2 = Buff.split("\t");				//discriminacion
-			}
-		}
-		System.out.printf("Nombre: Fire ");				//procesamiento : en este caso solamente los imprime por terminal
-		for(int i = 0 ; i < 10 ; i++){
-			if(i == 1 || i == 4 || i>7){
-				System.out.printf("%s%s\t", Relleno[contador], Info1[i] );
-				contador++;
-			}
-		}
-		contador = 0;
-		System.out.printf("\nNombre: Corners ");
-		for(int i = 0 ; i < 10 ; i++){
-			if(i == 1 || i == 4 || i > 7){
-				System.out.printf("%s%s\t", Relleno[contador], Info2[i] );
-				contador++;
-			}
-		}
-		/* cierra el fichero */ 
-		try {
-			Fr.close();
-		} catch (IOException e) {
-			// TODO Auto-generated catch block
-			e.printStackTrace();
-		}
-	}
-	
+
+
 	/**
 	 * Ejecucion del algoritmo genetico:
 	 * 
@@ -533,68 +611,196 @@ public class AG {
 	 * @param args
 	 */
 	public static void main (String [] args){
-		/* inicializacion */
+		
+		/* INICIALIZACION */
+		
 		AG Ag = new AG();
-		///////////////////////
-		Ag.menu();
-	}
-		/*
-		do{
-			/* evaluacion *
-			Ag.evaluation();
-			/* generacion de hijos *
-			for(int i = 10 ; i < Configuracion.getTPob(); i++){			// i empieza en 10 para empezar a rellenar desde esa posicion
-				/* seleccion, cruce y mutacion*
-				Ag.cross(Ag.selection());
-			}
-			/* elitismo 
+		FileGenerator Fg = new FileGenerator(Ag.getIndividuo(0));
+		Runtime Basurero = Runtime.getRuntime();
+		File F = null;
+		int aux = 0;
+		int acumulador = 0;
+		int contador ;
+		
+		boolean record = false;
+		Individuo [] Padres = new Individuo[Configuracion.getNPad()];
+		for(int i = 0 ; i < Configuracion.getNPad() ; i++){
+			Padres[i] = new Individuo();
+		}
+		
+		//System.out.printf("\n\nCONFIGURACION DE TESTEO ACTIVADA\n\n");
+		
+		
+		/*System.out.printf("\nGENERACION DE INDIVIDUOS");
+		Fg.next(Ag.getIndividuo(0));		
+		*/
+		// escritura de los ficheros de comportamiento
+		Ag.writeGenFiles(Fg);
+
+		 
+		
+		 do{
+			/*****************************************************************************************************************/
+				
+			// compilacion de los ficheros de comportamiento
+			Fg.compileThis(Ag.getGeneration());
+			
+			/* EVALUACION */
+			
+			System.out.printf("\nEVALUACION");
+			
+
+
+			// generacion ficheros de batalla
+				//\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\
+				Ag.setFight();
+				//\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\
+
+				// guarda la informacion en un fichero
+				Fg.saveThis(Ag.getPob());
+				// libera la memoria usada por la poblacion
+				Ag.letsFreeThis();
+				Basurero.gc();
+				
+			contador = 0;
+			 do{
+			/******************************************/
+				System.out.printf("\n\tEvaluando individuo %d", contador);
+				
+				aux = Ag.getBattleCounter();
+				
+				// decide si graba las batallas
+				if(Ag.getGeneration() == 0 || Ag.getGeneration() == Configuracion.getCritParada()-1){
+						record = true;
+				}
+						
+			    // invoca a Robocode
+				for(int i = 0 ; i < Configuracion.getTTor() ; i++){
+					Ag.invokeRoboCode(record);
+
+					// incremento contador de batalla
+					Ag.incrementBattleCounter();
+
+				}
+				
+				// espera a que se obtengan los resultados
+				
+				for(int i = aux ; i < Ag.getBattleCounter() ; i++){
+						F = Fg.getNewResPath(i);
+						System.out.printf("\n***************\nFICHERO EN ESPERA = \"R"+i+".txt\n***************\n");
+						while(F.exists() != true && F.canRead() != true){
+							try {
+								TimeUnit.SECONDS.sleep(30);
+							} catch (InterruptedException e) {
+								// TODO Auto-generated catch block
+								e.printStackTrace();
+							}
+						}
+				}
+				// espera
+				try {
+					TimeUnit.SECONDS.sleep(1);
+				} catch (InterruptedException e) {
+					// TODO Auto-generated catch block
+					e.printStackTrace();
+				}
+				
+				contador++;
+				record = false;
+			 }while(contador<Configuracion.getTPob());
+			 /******************************************/	
+				System.out.printf("\n\tObteniendo resultados...");
+				
+				// reinicia la poblacion
+				Ag.reinitiatePob();
+				
+				// carga la informacion previamente guardada
+				Fg.loadData(Ag.getPob());
+				
+				// inicializa hijos
+				Ag.initiateChildren();
+				
+				// inicializa elite
+				Ag.initiateElite();
+				
+				// extrae resultados
+				////////////////////////////////////////////////////
+				////////////////////////////////////////////////////
+			//	for(int i = 0 ; i < Configuracion.getTTor(); i++){ Ag.incrementBattleCounter(); }				
+				///////////////////////////////////////////////////
+				///////////////////////////////////////////////////
+			/*******************************************************************/
+			contador = 0;
+			do{
+				acumulador = 0;
+				for(int i = aux ; i < Ag.getBattleCounter() ; i++){
+					acumulador = acumulador + Fg.getBattleResults("R" + i + ".txt", "G" + Ag.getGeneration() + "N" + contador + ".java");
+				}
+		
+				// actualiza fitness del individuo
+				Ag.setFitness(contador, acumulador);
+				Ag.incrementPos();
+				contador++;
+			
+			 }while(contador<Configuracion.getTPob());
+			  
+			 /*******************************************************************/
+		
+			/* SELECCION */
+			
+				System.out.printf("\nSELECCION Y CRUCE");
+			/********************************************/
+			 contador = 0;
+			 do{
+			 
+				
+				 Padres = Ag.selection();
+		
+				/* CRUCE */
+			
+				 Ag.cross(Padres);
+				
+				contador++;
+				
+			 }while(contador<( Configuracion.getTPob() - Configuracion.getNElite() )/Configuracion.getNPad());
+			/*********************************************/
+			
+			 /* ELITISMO */
+			
+			 System.out.printf("\nELITISMO");
+			
 			Ag.elitism();
-		}while(Ag.getGeneration() < Configuracion.getCritParada());
+			
+			// genera periodicamente un informe de los robots
+			if(Ag.getGeneration() == 0 || Ag.getGeneration() == Configuracion.getCritParada() || Ag.getGeneration()%Configuracion.getReport() == 0)
+				Ag.genLog(Fg);
+						
+			
+			/* REEMPLAZAMIENTO */
+			System.out.printf("\n\nREEMPLAZAMIENTO");
+		
+			Ag.replacement(Fg);
+		
+		//	System.out.printf("\n\nPoblacion tras reemplazamiento : \n");
+		//	Ag.printGeneration();
+			
+			// cada x generaciones crea un registro de todos los individuos
+			// cada y generaciones crea un registro de todos los elite
+			
+			Ag.freeChildren();
+			Ag.freeElite();
+			Basurero.gc();
+			Ag.resetBattleCounter();
+			Ag.resetPosition();
+			Fg.next(Ag.getIndividuo(0));
+			
+			
+			System.out.printf("\nFIN DE LA GENERACION : %d", Ag.getGeneration()-1);
+
+			
+		} while(Ag.getGeneration() <= Configuracion.getCritParada());
+		 /****************************************************************************************************/
+		 //Ag.genLog(Fg);
 	}
 	
-	/**
-	 * Menu de prueba para verificar que una ejecucion sola no peta
-	 * @param Ag
-	 */
-	public void menu (){
-		int opcion = -1;
-		Individuo [] Padres = null;
-		Scanner Entrada = new Scanner(System.in);
-		System.out.printf("Inicio del algoritmo");
-		do{
-			/* print opciones */
-			System.out.printf("\n\t1.Evaluacion\n\t2.Seleccion\n\t3.Cruce+mutacion\n\t4.Elitismo\n\t0.Salir\n");
-			opcion = Entrada.nextInt();
-			switch (opcion){
-				case 1:
-					/* Evaluacion */
-					System.out.printf("\n\n\n------------------------------------\nEVALUACION\n");
-					evaluation();
-					break;
-				case 2:
-					/* Seleccion */
-					System.out.printf("\n\n\n------------------------------------\nSELECCION\n");
-					Padres = selection();
-					break;
-				case 3:
-					/* Cruce+mutacion */
-					System.out.printf("\n\n\n------------------------------------\nCRUCE Y MUTACION\n");
-					cross(Padres);
-					break;
-				case 4:
-					/* Elitismo */
-					System.out.printf("\n\n\n------------------------------------\nELITISMO\n");
-					elitism();
-					break;
-				case 0:
-					/* Salir */
-					System.out.printf("\n\n\n------------------------------------\nSALIENDO DEL ALGORITMO\n");
-					break;
-				default:
-					/* Opcion no considerada */
-					System.out.printf("\n\n\n------------------------------------\nEVALUACION\n");
-					break;
-			}
-		}while(opcion != 0);
-	}
 }

@@ -10,28 +10,46 @@ import java.io.IOException;
 public class Configuracion {
 	
 	/* variables globales */
-	static private int parametros = 5;						//cantidad de parametros del antecedente
-	static private int acciones = 5;						//cantidad de acciones del consecuente
-	static private int nReglas = 7;							//cantidad de reglas por robot
-	static private double pMutacion = 0.1;					//probabilidad de mutacion
-	static private double pMiniMutacion = 0.2;				//probabilidad de minimutacion
-	static private int nPadres = 2; 						//numero de padres que se reproducen en cada cruce
-	static private int tamaPoblacion = 100;					//tamaño de poblacion
-	static private int tamaTorneo = 5;						//tamaño del torneo
-	static private int criterioParada = 10;				//numero de generaciones del AG
-	static private int nBattles = 50;						//numero de batallas en un enfrentamiento
-	static private int nElite = tamaPoblacion/10;			//tamaño de la poblacion elite
-	static private String Filepath = "/C:/robocode/robots/myRobots/"; 			//direccion donde se guardaran los ficheros de comportamiento
+	final static private int parametros = 5;						//cantidad de parametros del antecedente
+	final static private int acciones = 5;						//cantidad de acciones del consecuente
+	final static private int nReglas = 7;							//cantidad de reglas por robot
+	final static private double pMutacion = 0.1;					//probabilidad de mutacion
+	final static private double pMiniMutacion = 0.2;				//probabilidad de minimutacion
+	final static private int nPadres = 2; 						//numero de padres que se reproducen en cada cruce; SOLO VALORES PARES
+	final static private int tamaPoblacion = 60;					//tamaño de poblacion; SOLO VALORES PARES
+	
+	/////////////////////////////////////////////////////////
+	//CONFIGURACION DE TESTEO
+	/////////////////////////////////////////////////////////
+	//final static private int tamaPoblacion = 20;
+	//final static private int criterioParada = 2;
+	/////////////////////////////////////////////////////////
+	//
+	/////////////////////////////////////////////////////////
+	
+	final static private int tamaTorneo = 3;						//tamaño del torneo y numero de compañeros que se enfrentarán entre sí en batalla
+	final static private int criterioParada = 10;				//numero de generaciones del AG
+	final static private int nBattles = 5;						//numero de batallas en un enfrentamiento
+	final static private int nElite = tamaPoblacion/10;			//tamaño de la poblacion elite
+	final static private int totalBat = nBattles*tamaPoblacion;
+
+	final static private int report = criterioParada/5;				//numero de informes que recibiremos de la poblacion
+
+	final static private String Filepath = "/C:/robocode/robots/myRobots/"; 			//direccion donde se guardaran los ficheros de comportamiento
 //	static private String Filepath = "/C:/robocode/robots/myRobots/pruebas/";			//direccion de testeo
-	static private String BattleFilePath = "/C:/robocode/battles/";
+	final static private String BattleFilePath = "/C:/robocode/battles/";
   	//comando que usa javac para compilar; FALTA AGREGARLE AL ULTIMO STRING EL NOMBRE DEL FICHERO A COMPILAR
-	static private String [] CompilationCmd = {"javac","-cp", "C:\\robocode\\libs\\robocode.jar","C:\\robocode\\robots\\myRobots\\"}; // String [4]
-	static private String CompilationFilepath = "C:\\robocode\\robots\\myRobots\\";
+	final static private String [] CompilationCmd = {"javac","-cp", "C:\\robocode\\libs\\robocode.jar","C:\\robocode\\robots\\myRobots\\"}; // String [4]
+	final static private String CompilationFilepath = "C:\\robocode\\robots\\myRobots\\";
   	// HAY QUE PASARLE EL FICHERO DE BATALLA (elemento 8) Y EL DE RESULTADOS (elemento 10)
-  	static private String [] StartRobocode = {"java", "-Xmx512M", "-Dsun.io.useCanonCaches=false", "-cp", "C:/robocode/libs/robocode.jar", "robocode.Robocode", "-battle", "C:/robocode/battles/", "-results", "C:/robocode/resultados/", "-nodisplay" };
-  	static private String ResultsFilepath = "C:/robocode/resultados/";
+	//string [13]
+	final static private String [] StartRobocode = {"java", "-Xmx512M", "-Dsun.io.useCanonCaches=false", "-cp", "C:/robocode/libs/robocode.jar", "robocode.Robocode", "-battle", "C:/robocode/battles/", "-results", "C:/robocode/resultados/", "-nodisplay", "", "" };
+	final static private String ResultsFilepath = "C:/robocode/resultados/";
   	// HAY QUE PASARLE EL FICHERO DE BATALLA (elemento 8) Y EL DE RESULTADOS (elemento 10)
-  	static private String [] StartRobocodeDisplayed = {"java", "-Xmx512M", "-Dsun.io.useCanonCaches=false", "-cp", "C:/robocode/libs/robocode.jar", "robocode.Robocode", "-battle", "C:/robocode/battles/", "-results", "C:/robocode/resultados/"};
+  	//string [10]
+	final static private String [] StartRobocodeDisplayed = {"java", "-Xmx512M", "-Dsun.io.useCanonCaches=false", "-cp", "C:/robocode/libs/robocode.jar", "robocode.Robocode", "-battle", "C:/robocode/battles/", "-results", "C:/robocode/resultados/"};
+	final static private String ReportPath = "C:/robocode/reports/";
+	final static private String SavePath = "C:/robocode/PRUEBAS/saves/saveFile.txt";
   	
   	/* metodos */
 	
@@ -57,6 +75,10 @@ public class Configuracion {
 
 	static public int getNElite() { return nElite; }
 	
+	static public int getTotalBat() { return totalBat; }
+	
+	static public int getReport() { return report; }
+	
 	static public String getFilePath() { return Filepath; } 
 
 	static public String getBattlePath() { return BattleFilePath; }
@@ -74,6 +96,10 @@ public class Configuracion {
 	
 	static public String [] getInvokeCmdDisplayed() { return StartRobocodeDisplayed; }
 	
+	static public String getReportPath(){ return ReportPath; }
+	
+	static public String getSavePath() { return SavePath; }
+	
 	/**
 	 * Testeo de compilación desde consola.
 	 * En primer lugar probaremos que el fichero de batalla funciona correctamente, cambiando el fichero prueba2.battle (en lugar de G100N100 intentaremos coger RoboPrueba)
@@ -83,7 +109,7 @@ public class Configuracion {
 	static public void main(String[] args){
 		boolean firstTest = false;  // true = comprobar fichero de batalla, false = comprobar compilacion
 		String [] Cmd = getInvokeCmdDisplayed();
-		String [] Moverse = { "cd", "C:/robocode/"};
+	//	String [] Moverse = { "cd", "C:/robocode/"};
 		String [] Compilacion9 = new String[4];
 		String [] Compilacion8 = new String[4];
 		for(int i = 0 ; i < 4 ; i++){
@@ -112,7 +138,7 @@ public class Configuracion {
 		for(int i = 0 ; i < 2 ; i ++){
 			if(firstTest == true){
 				///////////////////////////////////////////////////////////////////
-				System.out.printf("MOVIENDOSE\n");
+		/**		System.out.printf("MOVIENDOSE\n");
 				//////////////////////////////////////////////////////////////////////
 				try {
 					Runtime.getRuntime().exec(Moverse);
@@ -120,7 +146,7 @@ public class Configuracion {
 					// TODO Auto-generated catch block
 					e1.printStackTrace();
 				}
-
+*/
 				///////////////////////////////////////////////////////////////////
 				System.out.printf("INVOCANDO ROBOCODE\n");
 				//////////////////////////////////////////////////////////////////////
